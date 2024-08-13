@@ -1,11 +1,11 @@
-import {
-    type Adapter,
-    type MessageSignerWalletAdapterProps,
-    type SignerWalletAdapterProps,
-    type SignInMessageSignerWalletAdapterProps,
-    type WalletAdapterProps,
-    type WalletName,
-    type WalletReadyState,
+import type {
+    Adapter,
+    MessageSignerWalletAdapterProps,
+    SignerWalletAdapterProps,
+    SignInMessageSignerWalletAdapterProps,
+    WalletAdapterProps,
+    WalletName,
+    WalletReadyState,
 } from '@solana/wallet-adapter-base';
 import { type PublicKey } from '@solana/web3.js';
 import { createContext, useContext } from 'react';
@@ -88,8 +88,7 @@ Object.defineProperty(DEFAULT_CONTEXT, 'publicKey', {
 
 function logMissingProviderError(action: string, property: string) {
     const error = new Error(
-        `You have tried to ${action} "${property}" on a WalletContext without providing one. ` +
-            'Make sure to render a WalletProvider as an ancestor of the component that uses WalletContext.'
+        `You have tried to ${action} "${property}" on a WalletContext without providing one. Make sure to render a WalletProvider as an ancestor of the component that uses WalletContext.`
     );
     console.error(error);
     return error;

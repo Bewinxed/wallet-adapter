@@ -4,7 +4,7 @@
 .swc
 
 docs
-lib
+# lib
 build
 dist
 out

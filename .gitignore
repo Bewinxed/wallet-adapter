@@ -12,6 +12,7 @@ yarn.lock
 .swc
 build
 lib
+!packages/core/svelte/lib
 dist
 docs
 out

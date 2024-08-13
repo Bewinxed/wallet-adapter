@@ -6,7 +6,8 @@
         "plugin:prettier/recommended",
         "plugin:react/recommended",
         "plugin:react-hooks/recommended",
-        "plugin:require-extensions/recommended"
+        "plugin:require-extensions/recommended",
+        "plugin:svelte/recommended"
     ],
     "parser": "@typescript-eslint/parser",
     "plugins": [
@@ -14,7 +15,8 @@
         "prettier",
         "react",
         "react-hooks",
-        "require-extensions"
+        "require-extensions",
+        "svelte"
     ],
     "settings": {
         "react": {
