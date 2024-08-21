@@ -7,6 +7,7 @@ type ButtonState = {
 	onconnect?: (publicKey: PublicKey) => void;
 	ondisconnect?: () => void;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	onselectwallet?: (...args: any[]) => void;
 	publicKey?: PublicKey | null;
 	walletIcon?: string;

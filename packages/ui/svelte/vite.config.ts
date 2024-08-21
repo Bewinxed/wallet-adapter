@@ -1,15 +1,11 @@
-// import { sveltekit } from '@sveltejs/kit/vite';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
-// import { nodePolyfills } from 'vite-plugin-node-polyfills';
-// import tailwindcss from 'tailwindcss';
-import scopeTailwind from 'vite-plugin-scope-tailwind';
-
 import { defineConfig } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { resolve } from 'path';
 
 export default defineConfig({
 	plugins: [
-		sveltekit()
+		svelte()
 		// scopeTailwind({
 		// 	react: 'false'
 		// })
@@ -20,6 +16,15 @@ export default defineConfig({
 	// 		plugins: [tailwindcss()]
 	// 	}
 	// },
+	server: {
+		host: '127.0.0.1',
+		port: 5173
+	},
+	resolve: {
+		alias: {
+			$lib: resolve('./src/lib')
+		}
+	},
 	build: {
 		lib: {
 			name: '@bewinxed/wallet-adapter-svelte-ui',
@@ -35,6 +40,7 @@ export default defineConfig({
 				'@solana/wallet-adapter-wallets',
 				'@bewinxed/wallet-adapter-svelte'
 			]
-		}
+		},
+		ssr: true
 	}
 });

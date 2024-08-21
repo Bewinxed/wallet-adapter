@@ -8,10 +8,10 @@
 	const solana = useSolana();
 </script>
 
-<div class="p-2 container">
+<div class="p-2 container gap-2 flex-col">
 	<button onclick={() => solana.context.wallet?.connect()}>Connect</button>
 	<button onclick={() => solana.context.wallet?.disconnect()}>Disconnect</button>
-	<WalletMultiButton />
+	<WalletMultiButton class=" " />
 	<WalletConnectButton />
 	<WalletDisconnectButton />
 	<h1>Welcome to your library project</h1>

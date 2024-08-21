@@ -1,4 +1,4 @@
-import { useSolana, WalletContext, type Wallet } from '@bewinxed/wallet-adapter-svelte';
+import { useSolana, type WalletContext, type Wallet } from '@bewinxed/wallet-adapter-svelte';
 import type { SolanaProvider } from '@bewinxed/wallet-adapter-svelte/dist/useSolana.svelte';
 
 type ButtonState = {

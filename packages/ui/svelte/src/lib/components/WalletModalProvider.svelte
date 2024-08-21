@@ -12,7 +12,7 @@
 </script>
 
 {#if modal.visible}
-	<WalletModal {...props} />
+	<WalletModal  {...props} />
 {/if}
 {@render children()}
 

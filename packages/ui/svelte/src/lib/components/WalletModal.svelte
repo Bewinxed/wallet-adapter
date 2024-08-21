@@ -1,32 +1,26 @@
 <script lang="ts">
 	import DigitalAssetIcon from './DigitalAssetIcon.svelte';
-	import { spring, tweened } from 'svelte/motion';
-
-	import { dialogEsc, dialogOpen } from '$lib/ui/dialogFixer';
-	import { useBreakpoint } from '$lib/ui/useBreakpoint.svelte';
+	import { dialogEsc, dialogOpen } from '../ui/dialogFixer';
+	import { swipeToClose } from '../ui/swipeToClose';
+	import { useBreakpoint } from '../ui/useBreakpoint.svelte';
 	import type { Wallet } from '@bewinxed/wallet-adapter-svelte';
 	import { useSolana } from '@bewinxed/wallet-adapter-svelte';
 	import { WalletReadyState } from '@solana/wallet-adapter-base';
 	import { onMount } from 'svelte';
-	import {
-		backIn,
-		backInOut,
-		backOut,
-		linear,
-		quintIn,
-		quintInOut,
-		sineInOut,
-		sineOut
-	} from 'svelte/easing';
+	import { sineInOut } from 'svelte/easing';
 	import { fly, slide } from 'svelte/transition';
 	import { useWalletModal } from '../useWalletModal.svelte';
 	import WalletListItem from './WalletListItem.svelte';
-	import WalletSvg from './WalletSVG.svelte';
-	import { swipeToClose } from '$lib/ui/swipeToClose';
 
 	let {
+		onopen,
+		onclose,
 		class: className
 	}: {
+		/** Fires when the wallet select modal opens */
+		onopen?: () => void;
+		/** Fires when the wallet select modal closes */
+		onclose?: () => void;
 		class?: string;
 	} = $props();
 
@@ -153,7 +147,7 @@
 {#snippet modalCloseButton()}
 	<button
 		onclick={() => (walletModal.visible = false)}
-		class="wallet-adapter-modal-button-close bg-gray-200 backdrop-blur rounded-full p-1"
+		class="wallet-adapter-modal-button-close rounded-full bg-gray-200 p-1 backdrop-blur"
 	>
 		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-4 w-4">
 			<g fill="none" fill-rule="evenodd">
@@ -176,29 +170,33 @@
 	use:swipeToClose
 	use:dialogOpen
 	use:dialogEsc
+	onopen={onopen}
 	class:!min-h-[70vh]={infoSectionExpanded && breakpoint === 'xs'}
 	aria-labelledby="wallet-adapter-modal-title"
-	class="min-h-[50vh] sm:min-h-[50vh] flex duration-[250ms] ease-in-out transition-[height,min-height] mx-auto sm:my-auto place-self-end sm:place-self-auto m-0 sm:min-w-[40rem] sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl flex-1 w-screen sm:w-fit max-w-[100vw] wallet-adapter-modal p-0 rounded-xl shadow-2xls {className} border sm:shadow-2xl h-min"
+	class="wallet-adapter-modal shadow-2xls bottom-0 top-auto m-0 mx-auto flex min-h-[50vh] w-screen max-w-[100vw] flex-1 rounded-xl p-0 transition-[height,min-height] duration-[250ms] ease-in-out sm:top-0 sm:my-auto sm:min-h-[50vh] sm:w-fit sm:min-w-[40rem] sm:max-w-lg sm:place-self-auto md:max-w-xl lg:max-w-2xl xl:max-w-3xl {className} h-min border sm:shadow-2xl"
 	onmousedown={(e) => {
 		if (e.target === e.currentTarget) {
 			walletModal.visible = false;
 		}
 	}}
 	onclose={() => {
+		if (onclose) {
+			onclose();
+		}
 		walletModal.visible = false;
 	}}
 	in:fly={{ y: 200, duration: 250, easing: sineInOut }}
 	out:fly={{ y: 200, duration: 125, easing: sineInOut }}
 >
 	<div
-		class="flex flex-1 flex-col sm:flex-row divide-x-0 sm:divide-x divide-y sm:divide-y-0 border rounded-xl"
+		class="flex flex-1 flex-col divide-x-0 divide-y rounded-xl border sm:flex-row sm:divide-x sm:divide-y-0"
 	>
 		{#if wallets.length}
 			<div
-				class="px-6 wallet-adapter-modal-list-container p-2 flex flex-1 flex-col overflow-y-auto mr-1 grow"
+				class="wallet-adapter-modal-list-container mr-1 flex flex-1 grow flex-col overflow-y-auto p-2 px-6"
 			>
-				<div class="inline-flex justify-between items-center">
-					<h1 class="wallet-adapter-modal-title font-semibold text-lg py-2">
+				<div class="inline-flex items-center justify-between">
+					<h1 class="wallet-adapter-modal-title py-2 text-lg font-semibold">
 						Connect a wallet on Solana
 					</h1>
 					<div class="inline-flex sm:hidden">
@@ -207,7 +205,7 @@
 				</div>
 				<ul class="wallet-adapter-modal-list flex flex-1 flex-col gap-2 pr-2">
 					<li>
-						<h2 class="font-semibold text-sm text-gray-700 capitalize">installed</h2>
+						<h2 class="text-sm font-semibold capitalize text-gray-700">installed</h2>
 					</li>
 					{#each listedWallets as wallet (wallet.adapter.name)}
 						<li class="contents">
@@ -222,7 +220,7 @@
 					{/each}
 					{#if collapsedWallets.length}
 						<li>
-							<h2 class="font-semibold text-sm text-gray-700 capitalize">popular</h2>
+							<h2 class="text-sm font-semibold capitalize text-gray-700">popular</h2>
 						</li>
 
 						{#each collapsedWallets as wallet (wallet.adapter.name)}
@@ -244,23 +242,23 @@
 				</ul>
 			</div>
 		{/if}
-		<div class="p-2 flex flex-col px-6 gap-2 overflow-auto sm:flex-1">
+		<div class="grid flex-col gap-2 overflow-auto p-2 px-6 sm:flex-1">
 			{#if !infoSectionExpanded}
 				<div
 					in:slide={{ axis: 'y', duration: 250, easing: sineInOut }}
 					out:slide={{ axis: 'y', duration: 250, easing: sineInOut }}
-					class="wallet-adapter-modal-container flex justify-between place-items-center"
+					class="wallet-adapter-modal-container flex place-items-center justify-between"
 				>
 					<h1 class="wallet-adapter-modal-title font-semibold text-gray-700">
 						New to Solana?
 					</h1>
 					<button
-						class="capitalize font-semibold inline-flex items-center text-sm group hover:border-b"
+						class="group inline-flex items-center text-sm font-semibold capitalize hover:border-b"
 						onclick={() => {
 							infoSectionExpanded = true;
 						}}
 					>
-						<figure class="w-4 rotate-180 group-hover:w-0 transition-all">
+						<figure class="w-4 rotate-180 transition-all group-hover:w-0">
 							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 								<g fill="none" fill-rule="evenodd">
 									<path
@@ -274,7 +272,7 @@
 							</svg>
 						</figure>
 						learn more
-						<figure class="w-0 group-hover:w-4 rotate-180 transition-all">
+						<figure class="w-0 rotate-180 transition-all group-hover:w-4">
 							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 								<g fill="none" fill-rule="evenodd">
 									<path
@@ -291,13 +289,13 @@
 				</div>
 			{:else}
 				<div
-					class="flex-1"
+					class="flex-1 flex flex-col gap-4"
 					in:slide={{ axis: 'y', duration: 250, easing: sineInOut }}
 					out:slide={{ axis: 'y', duration: 250, easing: sineInOut }}
 				>
 					<div
-						class="wallet-adapter-modal-container flex justify-between items-center content-center
-					place-items-center sm:py-2 sm:mb-4"
+						class="wallet-adapter-modal-container flex place-items-center content-center items-center
+					justify-between"
 					>
 						{#if breakpoint === 'xs'}
 							<button
@@ -320,14 +318,18 @@
 								</svg>
 							</button>
 						{/if}
-						<div class="flex gap-2 place-items-center w-full place-content-center py-4">
-							<h1 class="wallet-adapter-modal-title font-semibold text-lg">
+						<div
+							class="flex w-full place-content-center place-items-center gap-2 py-4 sm:py-0 justify-between"
+						>
+							<h1
+								class="wallet-adapter-modal-title text-lg font-semibold w-full text-center sm:text-left sm:py-2"
+							>
 								What is a wallet?
 							</h1>
 							<div class="hidden sm:block">
 								<button
 									onclick={() => (walletModal.visible = false)}
-									class="wallet-adapter-modal-button-close bg-gray-200 backdrop-blur rounded-full p-1"
+									class="wallet-adapter-modal-button-close rounded-full bg-gray-200 p-1 backdrop-blur"
 								>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
@@ -348,12 +350,12 @@
 							</div>
 						</div>
 					</div>
-					<div class="flex flex-1 flex-col gap-5 place-items-center justify-between">
-						<div class="flex flex-col gap-2 place-items-center">
-							<div class="flex gap-4 items-start">
+					<div class="flex flex-1 flex-col place-items-center justify-between sm:py-3">
+						<div class="flex flex-col place-items-center gap-4">
+							<div class="flex items-start gap-4">
 								<DigitalAssetIcon />
 								<div>
-									<h3 class="font-semibold text-sm">
+									<h3 class="text-sm font-semibold">
 										A home for your digital assets
 									</h3>
 									<p class="text-sm text-gray-600">
@@ -362,10 +364,10 @@
 									</p>
 								</div>
 							</div>
-							<div class="flex gap-4 items-center">
+							<div class="flex items-center gap-4">
 								<div
 									style="box-shadow:var(--chin-shadow);"
-									class="p-1 rounded-lg border w-14 h-14"
+									class="h-14 w-14 rounded-lg border p-1"
 								>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
@@ -384,7 +386,7 @@
 									</svg>
 								</div>
 								<div>
-									<h3 class="font-semibold text-sm">Your digital passport</h3>
+									<h3 class="text-sm font-semibold">Your digital passport</h3>
 									<p class="text-sm text-gray-600">
 										You can use your wallet as your identity, and use it to sign
 										into your favorite apps.
@@ -393,15 +395,15 @@
 							</div>
 						</div>
 						<!-- learn more link -->
-						<div class="p-6 w-full flex border-t place-content-center">
+						<div class="flex w-full place-content-center border-t p-6">
 							<a
 								href="https://solana.com/docs/intro/wallets"
 								target="_blank"
-								class="wallet-adapter-modal-list-more text-[--solana-primary] font-semibold inline-flex items-center capitalize group hover:border-b gap-1"
+								class="wallet-adapter-modal-list-more group inline-flex items-center gap-1 font-semibold capitalize text-[--solana-primary] hover:border-b"
 								onclick={() => (expanded = !expanded)}
 								tabIndex={0}
 							>
-								<figure class="w-4 group-hover:w-0 transition-all">
+								<figure class="w-4 transition-all group-hover:w-0">
 									<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 										<g fill="none">
 											<path
@@ -415,7 +417,7 @@
 									</svg>
 								</figure>
 								learn more
-								<figure class="w-0 group-hover:w-4 transition-all">
+								<figure class="w-0 transition-all group-hover:w-4">
 									<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 										<g fill="none">
 											<path
@@ -490,10 +492,10 @@
 		}
 		&::-webkit-scrollbar-track {
 			/* change me to blue to match the background */
-			@apply bg-gray-200  m-2 rounded-lg;
+			@apply m-2 rounded-lg bg-gray-200;
 		}
 		&::-webkit-scrollbar-thumb {
-			@apply w-2  border-4 border-solid border-[inherit] rounded-lg bg-gray-400;
+			@apply w-2 rounded-lg border-4 border-solid border-[inherit] bg-gray-400;
 			/* change border color to blue to match the background */
 		}
 	}

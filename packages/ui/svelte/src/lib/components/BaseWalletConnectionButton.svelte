@@ -1,10 +1,9 @@
 <script lang="ts">
-	import type { ButtonProps } from '$lib/button';
+	import type { ButtonProps } from '../button';
 	import type { Snippet } from 'svelte';
 	import Button from './Button.svelte';
 	import { slide } from 'svelte/transition';
 	import WalletIcon from './WalletIcon.svelte';
-	import { useWalletConnectButton } from '$lib/useWalletConnectButton.svelte';
 
 	let {
 		walletIcon,

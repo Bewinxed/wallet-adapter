@@ -15,5 +15,10 @@ export type ButtonProps = {
 	startIcon?: Snippet | string;
 	style?: CSSProperties;
 	tabIndex?: number;
+
 	children?: Snippet;
+	/** removes border radius */
+	square?: boolean;
+	/** Removes the shadow from the button */
+	flat?: boolean;
 } & Omit<HTMLButtonAttributes, 'style'>;

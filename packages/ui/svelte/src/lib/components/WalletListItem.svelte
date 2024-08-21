@@ -21,7 +21,7 @@
 	{#snippet startIcon()}
 		<div
 			style:box-shadow="var(--chin-shadow)"
-			class="rounded-lg w-14 sm:w-12 aspect-square relative transition-all"
+			class="relative aspect-square w-14 rounded-lg transition-all sm:w-12"
 		>
 			<WalletIcon class="mix-blend-multiply" {wallet} />
 		</div>
@@ -33,12 +33,12 @@
 		<!-- <span class="text-xs text-green-700 capitalize">detected</span> -->
 		<div class="relative flex h-5 w-5">
 			<!-- icon that pings -->
-			<span class="animate-ping absolute h-5 w-5 rounded-full bg-green-400 opacity-75"></span>
+			<span class="absolute h-5 w-5 animate-ping rounded-full bg-green-400 opacity-75"></span>
 
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				viewBox="0 0 24 24"
-				class="inline-flex rounded-full bg-green-500 text-white aspect-square"
+				class="inline-flex aspect-square rounded-full bg-green-500 text-white"
 			>
 				<g fill="none">
 					<path

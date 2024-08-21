@@ -1,5 +1,5 @@
 import type { WalletContext } from '@bewinxed/wallet-adapter-svelte';
-import { useSolana, useWallet, type Wallet } from '@bewinxed/wallet-adapter-svelte';
+import { useSolana, type Wallet } from '@bewinxed/wallet-adapter-svelte';
 import type { SolanaProvider } from '@bewinxed/wallet-adapter-svelte/dist/useSolana.svelte';
 
 type ButtonState = {
@@ -13,16 +13,16 @@ type ButtonState = {
 class WalletDisconnectButton implements ButtonState {
 	solana: SolanaProvider = $derived(useSolana());
 	context: WalletContext = $derived(this.solana.context);
-	buttonDisabled = $derived(this.context.wallet ? false : true);
+	buttonDisabled = $derived(!this.context.wallet);
 	buttonState: 'disconnecting' | 'has-wallet' | 'no-wallet' = $derived.by(() => {
 		const { disconnecting, wallet } = this.context;
 		if (disconnecting) {
 			return 'disconnecting';
-		} else if (wallet) {
-			return 'has-wallet';
-		} else {
-			return 'no-wallet';
 		}
+		if (wallet) {
+			return 'has-wallet';
+		}
+		return 'no-wallet';
 	});
 	onButtonClick?: () => void;
 	walletIcon?: Wallet['adapter']['icon'] = $derived(this.context.wallet?.adapter.icon);
