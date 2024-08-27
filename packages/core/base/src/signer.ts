@@ -1,37 +1,78 @@
 import type { SolanaSignInInput, SolanaSignInOutput } from '@solana/wallet-standard-features';
-import type { Connection, TransactionSignature } from '@solana/web3.js';
+import {
+    Address,
+    Blockhash,
+    Rpc,
+    Signature,
+    TransactionVersion,
+    TransactionMessage,
+    Transaction,
+    SolanaRpcApi,
+    lamports,
+    pipe,
+    createTransactionMessage,
+    setTransactionMessageFeePayer,
+    appendTransactionMessageInstructions,
+    setTransactionMessageLifetimeUsingBlockhash,
+    compileTransaction,
+    getBase64EncodedWireTransaction,
+    FullySignedTransaction,
+    partiallySignTransactionMessageWithSigners,
+    partiallySignTransaction,
+    signTransaction,
+    BaseTransactionMessage,
+    addSignersToTransactionMessage,
+    TransactionMessageWithDurableNonceLifetime,
+    TransactionWithBlockhashLifetime,
+    TransactionWithLifetime,
+    TransactionMessageWithBlockhashLifetime,
+    decodeTransactionMessage,
+} from '@solana/web3.js';
+
 import {
     BaseWalletAdapter,
-    type SendTransactionOptions,
+    type SendTransactionConfig,
     type WalletAdapter,
     type WalletAdapterProps,
 } from './adapter.js';
 import { WalletSendTransactionError, WalletSignTransactionError } from './errors.js';
-import { isVersionedTransaction, type TransactionOrVersionedTransaction } from './transaction.js';
+import { extractTransactionVersion, isLegacyTransaction, isVersionedTransaction } from './transaction.js';
 
 export interface SignerWalletAdapterProps<Name extends string = string> extends WalletAdapterProps<Name> {
-    signTransaction<T extends TransactionOrVersionedTransaction<this['supportedTransactionVersions']>>(
+    signTransaction<T extends Transaction & TransactionWithLifetime>(
         transaction: T
-    ): Promise<T>;
-    signAllTransactions<T extends TransactionOrVersionedTransaction<this['supportedTransactionVersions']>>(
+    ): Promise<FullySignedTransaction>;
+    signAllTransactions<T extends Transaction & TransactionWithLifetime>(
         transactions: T[]
-    ): Promise<T[]>;
+    ): Promise<FullySignedTransaction[]>;
 }
 
+
 export type SignerWalletAdapter<Name extends string = string> = WalletAdapter<Name> & SignerWalletAdapterProps<Name>;
+
+export type TransactionMessageWithLifetime = BaseTransactionMessage | BaseTransactionMessage & TransactionMessageWithDurableNonceLifetime | BaseTransactionMessage & TransactionMessageWithBlockhashLifetime
 
 export abstract class BaseSignerWalletAdapter<Name extends string = string>
     extends BaseWalletAdapter<Name>
     implements SignerWalletAdapter<Name>
 {
     async sendTransaction(
-        transaction: TransactionOrVersionedTransaction<this['supportedTransactionVersions']>,
-        connection: Connection,
-        options: SendTransactionOptions = {}
-    ): Promise<TransactionSignature> {
+        transaction: TransactionMessageWithLifetime,
+        rpc: Rpc<SolanaRpcApi>,
+        options: SendTransactionConfig = {
+            encoding: 'base64',
+        }
+    ): Promise<Signature> {
         let emit = true;
+
+        async function getOrPassBlockhash<T extends TransactionMessageWithLifetime>(transaction: T) {
+            return 'lifetimeConstraint' in transaction && 'blockhash' in transaction.lifetimeConstraint && 'blockhash' in transaction.lifetimeConstraint ? transaction.lifetimeConstraint : await rpc.getLatestBlockhash({
+                commitment: options.preflightCommitment,
+                minContextSlot: options.minContextSlot,
+            }).send().then((res) => res.value);
+        }
         try {
-            if (isVersionedTransaction(transaction)) {
+            if (!isLegacyTransaction(transaction)) {
                 if (!this.supportedTransactionVersions)
                     throw new WalletSendTransactionError(
                         `Sending versioned transactions isn't supported by this wallet`
@@ -43,13 +84,16 @@ export abstract class BaseSignerWalletAdapter<Name extends string = string>
                     );
 
                 try {
-                    transaction = await this.signTransaction(transaction);
-
-                    const rawTransaction = transaction.serialize();
-
-                    return await connection.sendRawTransaction(rawTransaction, options);
+                    const blockhashOpts = await getOrPassBlockhash(transaction)
+                    const tx = await pipe(
+                        transaction,
+                        async (msg) => this.prepareTransaction(msg, blockhashOpts),
+                        async (msg) => compileTransaction(await msg),
+                        async (msg) => await this.signTransaction(await msg),
+                        async (msg) => getBase64EncodedWireTransaction(await msg),
+                    )
+                    return await rpc.sendTransaction(tx, options).send();
                 } catch (error: any) {
-                    // If the error was thrown by `signTransaction`, rethrow it and don't emit a duplicate event
                     if (error instanceof WalletSignTransactionError) {
                         emit = false;
                         throw error;
@@ -59,18 +103,17 @@ export abstract class BaseSignerWalletAdapter<Name extends string = string>
             } else {
                 try {
                     const { signers, ...sendOptions } = options;
-
-                    transaction = await this.prepareTransaction(transaction, connection, sendOptions);
-
-                    signers?.length && transaction.partialSign(...signers);
-
-                    transaction = await this.signTransaction(transaction);
-
-                    const rawTransaction = transaction.serialize();
-
-                    return await connection.sendRawTransaction(rawTransaction, sendOptions);
+                    const blockhashOpts = await getOrPassBlockhash(transaction)
+                    const tx = await pipe(
+                        transaction,
+                        async (msg) => this.prepareTransaction(msg, blockhashOpts),
+                        async (msg) => compileTransaction(await msg),
+                        async (msg) => signers?.length ? await partiallySignTransaction(signers.map(s => s.keyPair), await msg) : await msg,
+                        async (msg) => await this.signTransaction(await msg),
+                        async (msg) => getBase64EncodedWireTransaction(await msg),
+                    )
+                    return await rpc.sendTransaction(tx, sendOptions).send();
                 } catch (error: any) {
-                    // If the error was thrown by `signTransaction`, rethrow it and don't emit a duplicate event
                     if (error instanceof WalletSignTransactionError) {
                         emit = false;
                         throw error;
@@ -86,32 +129,28 @@ export abstract class BaseSignerWalletAdapter<Name extends string = string>
         }
     }
 
-    abstract signTransaction<T extends TransactionOrVersionedTransaction<this['supportedTransactionVersions']>>(
+    abstract signTransaction<T extends Transaction & TransactionWithLifetime>(
         transaction: T
-    ): Promise<T>;
+    ): Promise<FullySignedTransaction>; 
 
-    async signAllTransactions<T extends TransactionOrVersionedTransaction<this['supportedTransactionVersions']>>(
+    async signAllTransactions<T extends Transaction & TransactionWithLifetime>(
         transactions: T[]
-    ): Promise<T[]> {
+    ): Promise<FullySignedTransaction[]> {
         for (const transaction of transactions) {
-            if (isVersionedTransaction(transaction)) {
+            const version = extractTransactionVersion(transaction);
+            if (version === 0) {
                 if (!this.supportedTransactionVersions)
                     throw new WalletSignTransactionError(
                         `Signing versioned transactions isn't supported by this wallet`
                     );
 
-                if (!this.supportedTransactionVersions.has(transaction.version))
+                if (!this.supportedTransactionVersions.has(version))
                     throw new WalletSignTransactionError(
-                        `Signing transaction version ${transaction.version} isn't supported by this wallet`
+                        `Signing transaction version ${version} isn't supported by this wallet`
                     );
             }
         }
-
-        const signedTransactions: T[] = [];
-        for (const transaction of transactions) {
-            signedTransactions.push(await this.signTransaction(transaction));
-        }
-        return signedTransactions;
+        return await Promise.all(transactions.map(async (transaction) => await this.signTransaction(transaction)));
     }
 }
 

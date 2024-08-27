@@ -1,5 +1,1 @@
-# `@solana/wallet-adapter-base`
-
-<!-- @TODO -->
-
-Coming soon.
+# `@solana/wallet-adapter-base` ported to https://www.npmjs.com/package/@solana/transactions/v/2.0.0-rc.1

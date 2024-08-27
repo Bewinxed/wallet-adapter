@@ -1,46 +1,85 @@
-import type { Connection, PublicKey, SendOptions, Signer, Transaction, TransactionSignature } from '@solana/web3.js';
+import {
+    Address,
+    Blockhash,
+    Rpc,
+    Signature,
+    TransactionVersion,
+    generateKeyPair,
+    getAddressFromPublicKey,
+    lamports,
+    TransactionMessage,
+    Transaction,
+    SolanaRpcApi,
+    setTransactionMessageFeePayer,
+    setTransactionMessageLifetimeUsingBlockhash,
+    createTransactionMessage,
+    TransactionMessageWithBlockhashLifetime,
+    TransactionMessageWithDurableNonceLifetime,
+    pipe,
+    ITransactionMessageWithFeePayer,
+    TransactionWithBlockhashLifetime,
+    ITransactionMessageWithFeePayerSigner,
+    TransactionWithLifetime,
+    Slot,
+    Commitment,
+    MessageSigner,
+    BaseTransactionMessage,
+    KeyPairSigner,
+    setTransactionMessageLifetimeUsingDurableNonce,
+} from '@solana/web3.js';
 import EventEmitter from 'eventemitter3';
 import { type WalletError, WalletNotConnectedError } from './errors.js';
-import type { SupportedTransactionVersions, TransactionOrVersionedTransaction } from './transaction.js';
+import { SupportedTransactionVersions } from './transaction.js';
 
 export { EventEmitter };
 
 export interface WalletAdapterEvents {
-    connect(publicKey: PublicKey): void;
+    connect(address: Address): void;
     disconnect(): void;
     error(error: WalletError): void;
     readyStateChange(readyState: WalletReadyState): void;
 }
 
-export interface SendTransactionOptions extends SendOptions {
-    signers?: Signer[];
+export type SendTransactionConfig = Parameters<Rpc<SolanaRpcApi>['sendTransaction']>[1] & {
+    signers?: KeyPairSigner[];
 }
+
 
 // WalletName is a nominal type that wallet adapters should use, e.g. `'MyCryptoWallet' as WalletName<'MyCryptoWallet'>`
 // https://medium.com/@KevinBGreene/surviving-the-typescript-ecosystem-branding-and-type-tagging-6cf6e516523d
 export type WalletName<T extends string = string> = T & { __brand__: 'WalletName' };
 
-export interface WalletAdapterProps<Name extends string = string> {
-    name: WalletName<Name>;
-    url: string;
-    icon: string;
-    readyState: WalletReadyState;
-    publicKey: PublicKey | null;
-    connecting: boolean;
-    connected: boolean;
-    supportedTransactionVersions?: SupportedTransactionVersions;
+export type TransactionOrVersionedTransaction<S extends SupportedTransactionVersions | undefined = undefined> =
+    S extends SupportedTransactionVersions
+        ? S extends ReadonlySet<TransactionVersion>
+            ? TransactionMessage
+            : never
+        : TransactionMessage;
 
-    autoConnect(): Promise<void>;
-    connect(): Promise<void>;
-    disconnect(): Promise<void>;
-    sendTransaction(
-        transaction: TransactionOrVersionedTransaction<this['supportedTransactionVersions']>,
-        connection: Connection,
-        options?: SendTransactionOptions
-    ): Promise<TransactionSignature>;
-}
+
+        export interface WalletAdapterProps<Name extends string = string> {
+            name: WalletName<Name>;
+            url: string;
+            icon: string;
+            readyState: WalletReadyState;
+            address: Address | null;
+            connecting: boolean;
+            connected: boolean;
+            supportedTransactionVersions?: SupportedTransactionVersions;
+        
+            autoConnect(): Promise<void>;
+            connect(): Promise<void>;
+            disconnect(): Promise<void>;
+            sendTransaction(
+                transaction: BaseTransactionMessage,
+                rpc: Rpc<SolanaRpcApi>,
+                options?: SendTransactionConfig
+            ): Promise<Signature>;
+        }
+        
 
 export type WalletAdapter<Name extends string = string> = WalletAdapterProps<Name> & EventEmitter<WalletAdapterEvents>;
+
 
 /**
  * A wallet's readiness describes a series of states that the wallet can be in,
@@ -79,12 +118,12 @@ export abstract class BaseWalletAdapter<Name extends string = string>
     abstract url: string;
     abstract icon: string;
     abstract readyState: WalletReadyState;
-    abstract publicKey: PublicKey | null;
+    abstract address: Address | null;
     abstract connecting: boolean;
     abstract supportedTransactionVersions?: SupportedTransactionVersions;
 
     get connected() {
-        return !!this.publicKey;
+        return !!this.address;
     }
 
     async autoConnect() {
@@ -95,32 +134,27 @@ export abstract class BaseWalletAdapter<Name extends string = string>
     abstract disconnect(): Promise<void>;
 
     abstract sendTransaction(
-        transaction: TransactionOrVersionedTransaction<this['supportedTransactionVersions']>,
-        connection: Connection,
-        options?: SendTransactionOptions
-    ): Promise<TransactionSignature>;
+        transaction: BaseTransactionMessage,
+        rpc: Rpc<SolanaRpcApi>,
+        options?: SendTransactionConfig
+    ): Promise<Signature>;
 
-    protected async prepareTransaction(
-        transaction: Transaction,
-        connection: Connection,
-        options: SendOptions = {}
-    ): Promise<Transaction> {
-        const publicKey = this.publicKey;
-        if (!publicKey) throw new WalletNotConnectedError();
+    protected async prepareTransaction<T extends BaseTransactionMessage | BaseTransactionMessage & TransactionMessageWithDurableNonceLifetime>(
+        transactionMessage: T,
+        lifetime: Parameters<typeof setTransactionMessageLifetimeUsingDurableNonce>[0] | Parameters<typeof setTransactionMessageLifetimeUsingBlockhash>[0]
+    ) {
+        const address = this.address;
+        if (!address) throw new WalletNotConnectedError();
 
-        transaction.feePayer = transaction.feePayer || publicKey;
-        transaction.recentBlockhash =
-            transaction.recentBlockhash ||
-            (
-                await connection.getLatestBlockhash({
-                    commitment: options.preflightCommitment,
-                    minContextSlot: options.minContextSlot,
-                })
-            ).blockhash;
-
-        return transaction;
+        return pipe(
+            transactionMessage,
+            (msg) => setTransactionMessageFeePayer(address, msg),
+            (msg) => 'blockhash' in lifetime ? setTransactionMessageLifetimeUsingBlockhash(lifetime, msg) : setTransactionMessageLifetimeUsingDurableNonce(lifetime, msg)
+        )
+        
     }
 }
+
 
 export function scopePollingDetectionStrategy(detect: () => boolean): void {
     // Early return when server-side rendering
