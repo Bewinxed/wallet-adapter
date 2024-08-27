@@ -1,6 +1,6 @@
 {
     "name": "@bewinxed/wallet-adapter-base",
-    "version": "0.9.23",
+    "version": "0.9.27",
     "author": "Bewinxed <bewinxed@gmail.com>",
     "repository": "https://github.com/bewinxed/wallet-adapter",
     "license": "Apache-2.0",

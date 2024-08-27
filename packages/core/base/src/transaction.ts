@@ -1,5 +1,5 @@
 import { IAccountMeta, IInstruction } from '@solana/instructions';
-import { Transaction, TransactionMessage, TransactionVersion } from '@solana/web3.js';
+import { CompilableTransactionMessage, Transaction, TransactionMessage, TransactionVersion } from '@solana/web3.js';
 
 export type BaseTransactionMessage<TVersion extends TransactionVersion = TransactionVersion, TInstruction extends IInstruction = IInstruction> = Readonly<{
     instructions: readonly TInstruction[];

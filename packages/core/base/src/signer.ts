@@ -1,32 +1,20 @@
 import type { SolanaSignInInput, SolanaSignInOutput } from '@solana/wallet-standard-features';
 import {
-    Address,
-    Blockhash,
+    BaseTransactionMessage,
+    CompilableTransactionMessage,
+    FullySignedTransaction,
+    GetLatestBlockhashApi,
     Rpc,
+    SendTransactionApi,
     Signature,
-    TransactionVersion,
-    TransactionMessage,
     Transaction,
-    SolanaRpcApi,
-    lamports,
-    pipe,
-    createTransactionMessage,
-    setTransactionMessageFeePayer,
-    appendTransactionMessageInstructions,
-    setTransactionMessageLifetimeUsingBlockhash,
+    TransactionMessageWithBlockhashLifetime,
+    TransactionMessageWithDurableNonceLifetime,
+    TransactionWithLifetime,
     compileTransaction,
     getBase64EncodedWireTransaction,
-    FullySignedTransaction,
-    partiallySignTransactionMessageWithSigners,
     partiallySignTransaction,
-    signTransaction,
-    BaseTransactionMessage,
-    addSignersToTransactionMessage,
-    TransactionMessageWithDurableNonceLifetime,
-    TransactionWithBlockhashLifetime,
-    TransactionWithLifetime,
-    TransactionMessageWithBlockhashLifetime,
-    decodeTransactionMessage,
+    pipe
 } from '@solana/web3.js';
 
 import {
@@ -36,7 +24,7 @@ import {
     type WalletAdapterProps,
 } from './adapter.js';
 import { WalletSendTransactionError, WalletSignTransactionError } from './errors.js';
-import { extractTransactionVersion, isLegacyTransaction, isVersionedTransaction } from './transaction.js';
+import { extractTransactionVersion, isLegacyTransaction } from './transaction.js';
 
 export interface SignerWalletAdapterProps<Name extends string = string> extends WalletAdapterProps<Name> {
     signTransaction<T extends Transaction & TransactionWithLifetime>(
@@ -57,8 +45,8 @@ export abstract class BaseSignerWalletAdapter<Name extends string = string>
     implements SignerWalletAdapter<Name>
 {
     async sendTransaction(
-        transaction: TransactionMessageWithLifetime,
-        rpc: Rpc<SolanaRpcApi>,
+        transaction: CompilableTransactionMessage,
+        rpc: Rpc<SendTransactionApi & GetLatestBlockhashApi>,
         options: SendTransactionConfig = {
             encoding: 'base64',
         }
@@ -150,7 +138,11 @@ export abstract class BaseSignerWalletAdapter<Name extends string = string>
                     );
             }
         }
-        return await Promise.all(transactions.map(async (transaction) => await this.signTransaction(transaction)));
+        const signedTransactions: FullySignedTransaction[] = [];
+        for (const transaction of transactions) {
+            signedTransactions.push(await this.signTransaction(transaction));
+        }
+        return signedTransactions;
     }
 }
 

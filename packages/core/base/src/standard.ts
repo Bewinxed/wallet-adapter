@@ -22,15 +22,12 @@ export type WalletAdapterCompatibleStandardWallet = StandardWalletWithFeatures<
         (SolanaSignAndSendTransactionFeature | SolanaSignTransactionFeature) &
         (StandardDisconnectFeature | SolanaSignMessageFeature | SolanaSignInFeature | object)
 >;
-
 export interface StandardWalletAdapterProps<Name extends string = string> extends WalletAdapterProps<Name> {
     wallet: WalletAdapterCompatibleStandardWallet;
     standard: true;
 }
-
 export type StandardWalletAdapter<Name extends string = string> = WalletAdapter<Name> &
     StandardWalletAdapterProps<Name>;
-
 export function isWalletAdapterCompatibleStandardWallet(
     wallet: StandardWallet
 ): wallet is WalletAdapterCompatibleStandardWallet {

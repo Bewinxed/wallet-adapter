@@ -1,31 +1,19 @@
 import {
     Address,
-    Blockhash,
+    BaseTransactionMessage,
+    CompilableTransactionMessage,
+    GetLatestBlockhashApi,
+    KeyPairSigner,
     Rpc,
+    SendTransactionApi,
     Signature,
-    TransactionVersion,
-    generateKeyPair,
-    getAddressFromPublicKey,
-    lamports,
     TransactionMessage,
-    Transaction,
-    SolanaRpcApi,
+    TransactionMessageWithDurableNonceLifetime,
+    TransactionVersion,
+    pipe,
     setTransactionMessageFeePayer,
     setTransactionMessageLifetimeUsingBlockhash,
-    createTransactionMessage,
-    TransactionMessageWithBlockhashLifetime,
-    TransactionMessageWithDurableNonceLifetime,
-    pipe,
-    ITransactionMessageWithFeePayer,
-    TransactionWithBlockhashLifetime,
-    ITransactionMessageWithFeePayerSigner,
-    TransactionWithLifetime,
-    Slot,
-    Commitment,
-    MessageSigner,
-    BaseTransactionMessage,
-    KeyPairSigner,
-    setTransactionMessageLifetimeUsingDurableNonce,
+    setTransactionMessageLifetimeUsingDurableNonce
 } from '@solana/web3.js';
 import EventEmitter from 'eventemitter3';
 import { type WalletError, WalletNotConnectedError } from './errors.js';
@@ -40,10 +28,9 @@ export interface WalletAdapterEvents {
     readyStateChange(readyState: WalletReadyState): void;
 }
 
-export type SendTransactionConfig = Parameters<Rpc<SolanaRpcApi>['sendTransaction']>[1] & {
+export type SendTransactionConfig = Parameters<Rpc<SendTransactionApi & GetLatestBlockhashApi>['sendTransaction']>[1] & {
     signers?: KeyPairSigner[];
 }
-
 
 // WalletName is a nominal type that wallet adapters should use, e.g. `'MyCryptoWallet' as WalletName<'MyCryptoWallet'>`
 // https://medium.com/@KevinBGreene/surviving-the-typescript-ecosystem-branding-and-type-tagging-6cf6e516523d
@@ -66,13 +53,13 @@ export type TransactionOrVersionedTransaction<S extends SupportedTransactionVers
             connecting: boolean;
             connected: boolean;
             supportedTransactionVersions?: SupportedTransactionVersions;
-        
+            endpoint: string;
             autoConnect(): Promise<void>;
             connect(): Promise<void>;
             disconnect(): Promise<void>;
             sendTransaction(
                 transaction: BaseTransactionMessage,
-                rpc: Rpc<SolanaRpcApi>,
+                rpc: Rpc<SendTransactionApi & GetLatestBlockhashApi>,
                 options?: SendTransactionConfig
             ): Promise<Signature>;
         }
@@ -121,6 +108,7 @@ export abstract class BaseWalletAdapter<Name extends string = string>
     abstract address: Address | null;
     abstract connecting: boolean;
     abstract supportedTransactionVersions?: SupportedTransactionVersions;
+    abstract endpoint: string;
 
     get connected() {
         return !!this.address;
@@ -134,8 +122,8 @@ export abstract class BaseWalletAdapter<Name extends string = string>
     abstract disconnect(): Promise<void>;
 
     abstract sendTransaction(
-        transaction: BaseTransactionMessage,
-        rpc: Rpc<SolanaRpcApi>,
+        transaction: CompilableTransactionMessage,
+        rpc: Rpc<SendTransactionApi & GetLatestBlockhashApi>,
         options?: SendTransactionConfig
     ): Promise<Signature>;
 

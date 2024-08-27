@@ -1,8 +1,16 @@
 {
     "name": "@bewinxed/wallet-adapter-svelte",
-    "version": "0.15.40",
-    "author": "Solana Maintainers <maintainers@solana.foundation>",
-    "repository": "https://github.com/bewinxed/wallet-adapter",
+    "version": "0.15.44",
+    "author": "Bewinxed <bewinxed@gmail.com>",
+    "repository": "https://github.com/bewinxed/wallet-adapter-svelte",
+    "keywords": [
+        "solana",
+        "svelte",
+        "svelte 5",
+        "runes",
+        "wallet",
+        "adapter"
+    ],
     "license": "Apache-2.0",
     "publishConfig": {
         "access": "public"
@@ -52,6 +60,9 @@
         "jest": "^28.1.3",
         "jest-environment-jsdom": "^28.1.3",
         "jest-localstorage-mock": "^2.4.26",
+        "prettier": "^3.3.3",
+        "prettier-plugin-svelte": "^3.2.6",
+        "prettier-plugin-tailwindcss": "^0.6.6",
         "publint": "^0.1.9",
         "shx": "^0.3.4",
         "svelte": "^5.0.0-next.1",

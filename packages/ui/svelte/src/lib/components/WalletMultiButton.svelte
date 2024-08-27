@@ -188,7 +188,9 @@
 							<div class="inset-1 h-[80%] w-[80%]"></div>
 						</div>
 					{/if}
+					{#if walletIcon}
 					<WalletIcon wallet={{ adapter: { icon: walletIcon, name: '' } }} />
+					{/if}
 					</i>
 				</div>
 
